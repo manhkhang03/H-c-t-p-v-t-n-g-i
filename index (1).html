@@ -1,0 +1,2729 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Đóa Hoa Yêu Thương – 20/10 Trải Nghiệm 3D Dành Tặng </title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Libraries (Three.js & GSAP) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <style>
+    /* ============================================================
+       RESET & BASE STYLES
+       ============================================================ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    :root {
+      --color-rose: #ff85a1;
+      --color-rose-deep: #e05780;
+      --color-gold: #f9e4b7;
+      --color-gold-bright: #ffd700;
+      --color-lavender: #d8b4e2;
+      --color-bg-dark: #0f0717;
+      --font-display: 'Playfair Display', serif;
+      --font-script: 'Alex Brush', cursive;
+      --font-body: 'Montserrat', sans-serif;
+      --font-serif: 'Cormorant Garamond', serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--color-bg-dark);
+      font-family: var(--font-body);
+      color: #fff;
+    }
+
+    #webgl-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      outline: none;
+    }
+
+    /* ============================================================
+       CUSTOM CURSOR
+       ============================================================ */
+    .custom-cursor {
+      position: fixed;
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.08s ease-out, opacity 0.3s;
+      display: none;
+    }
+    .custom-cursor::before {
+      content: '🌸';
+      font-size: 18px;
+      filter: drop-shadow(0 0 8px rgba(255, 133, 161, 0.8));
+    }
+    .cursor-trail {
+      position: fixed;
+      width: 7px;
+      height: 7px;
+      background: radial-gradient(circle, #ffffff 15%, var(--color-gold) 60%, var(--color-rose) 100%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.9), 0 0 18px rgba(255, 133, 161, 0.6);
+      transform: translate(-50%, -50%);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .custom-cursor { display: block; }
+    }
+
+    /* ============================================================
+       LOADING SCREEN
+       ============================================================ */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #260d2b 0%, #0a040f 100%);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
+    }
+    .loader-flower {
+      width: 80px;
+      height: 80px;
+      position: relative;
+      animation: spinFlower 8s linear infinite;
+    }
+    @keyframes spinFlower {
+      0% { transform: rotate(0deg) scale(0.95); }
+      50% { transform: rotate(180deg) scale(1.08); }
+      100% { transform: rotate(360deg) scale(0.95); }
+    }
+    .loader-title {
+      margin-top: 25px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 5px;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      text-shadow: 0 0 15px rgba(249, 228, 183, 0.5);
+    }
+    .loader-bar-bg {
+      margin-top: 15px;
+      width: 220px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .loader-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-rose), var(--color-gold));
+      box-shadow: 0 0 10px var(--color-rose);
+      transition: width 0.3s ease;
+    }
+    .loader-status {
+      margin-top: 10px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ============================================================
+       GLOBAL OVERLAY & CONTROLS UI
+       ============================================================ */
+    #ui-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(15px, 3vw, 35px);
+    }
+
+    /* Top Navigation / Progress Indicator */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .brand-tag {
+      font-family: var(--font-display);
+      font-size: clamp(12px, 1.4vw, 15px);
+      letter-spacing: 3px;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      opacity: 0.85;
+      text-shadow: 0 0 12px rgba(249, 228, 183, 0.3);
+    }
+    .progress-stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(20, 10, 30, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      transition: all 0.4s ease;
+    }
+    .step-dot.active {
+      background: var(--color-rose);
+      box-shadow: 0 0 10px var(--color-rose);
+      transform: scale(1.3);
+    }
+    .step-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-left: 4px;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .btn-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(25, 15, 35, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      outline: none;
+    }
+    .btn-icon:hover {
+      background: rgba(255, 133, 161, 0.25);
+      border-color: var(--color-rose);
+      transform: scale(1.08);
+      box-shadow: 0 0 15px rgba(255, 133, 161, 0.4);
+    }
+    .btn-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* Bottom Quick Action Bar */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+    }
+    .hint-text {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      transition: opacity 0.4s ease;
+    }
+    .action-links {
+      display: flex;
+      gap: 15px;
+      pointer-events: auto;
+    }
+    .text-action-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s;
+    }
+    .text-action-btn:hover {
+      color: var(--color-gold);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 12px rgba(249, 228, 183, 0.25);
+    }
+
+    /* ============================================================
+       SCENE 1: THE MAGICAL BEGINNING
+       ============================================================ */
+    #scene1-ui {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: clamp(60px, 12vh, 120px);
+      text-align: center;
+      pointer-events: none;
+      transition: opacity 1s ease, transform 1s ease;
+    }
+    .hero-date {
+      font-family: var(--font-display);
+      font-size: clamp(14px, 2.2vw, 22px);
+      letter-spacing: 6px;
+      color: var(--color-rose);
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(255, 133, 161, 0.6);
+      margin-bottom: 8px;
+    }
+    .hero-subtitle {
+      font-family: var(--font-serif);
+      font-size: clamp(22px, 4vw, 42px);
+      font-style: italic;
+      color: #fff;
+      font-weight: 300;
+      text-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+      max-width: 85%;
+      margin-bottom: 30px;
+    }
+    .crystal-btn {
+      pointer-events: auto;
+      padding: clamp(14px, 2vw, 18px) clamp(30px, 4.5vw, 50px);
+      background: linear-gradient(135deg, rgba(255, 133, 161, 0.4) 0%, rgba(216, 180, 226, 0.3) 100%);
+      border: 1.5px solid rgba(255, 255, 255, 0.7);
+      border-radius: 50px;
+      font-family: var(--font-body);
+      font-size: clamp(13px, 1.5vw, 16px);
+      font-weight: 600;
+      letter-spacing: 3px;
+      color: #fff;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 35px rgba(255, 133, 161, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .crystal-btn::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      transform: rotate(45deg);
+      animation: crystalShine 4s ease-in-out infinite;
+    }
+    @keyframes crystalShine {
+      0% { transform: translateX(-150%) rotate(45deg); }
+      30%, 100% { transform: translateX(150%) rotate(45deg); }
+    }
+    .crystal-btn:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 0 50px rgba(255, 133, 161, 0.7), inset 0 0 25px rgba(255, 255, 255, 0.6);
+      border-color: #fff;
+    }
+
+    /* ============================================================
+       SCENE 2: THE ENCHANTED GARDEN
+       ============================================================ */
+    #scene2-ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 70px;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    .garden-nav-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .garden-instruction {
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: var(--color-gold);
+      background: rgba(15, 7, 23, 0.65);
+      backdrop-filter: blur(10px);
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(249, 228, 183, 0.3);
+      animation: pulseGlow 2.5s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      from { box-shadow: 0 0 8px rgba(249, 228, 183, 0.2); }
+      to { box-shadow: 0 0 20px rgba(249, 228, 183, 0.5); }
+    }
+
+    /* Modal for Flower Quotes */
+    .quote-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      width: min(90vw, 480px);
+      background: rgba(30, 12, 38, 0.85);
+      border: 1.5px solid rgba(255, 133, 161, 0.5);
+      border-radius: 24px;
+      padding: 35px 28px;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(255, 133, 161, 0.4), inset 0 0 25px rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+    }
+    .quote-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .quote-icon {
+      font-size: 32px;
+      margin-bottom: 15px;
+      display: inline-block;
+      animation: floatIcon 3s ease-in-out infinite;
+    }
+    @keyframes floatIcon {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .quote-text {
+      font-family: var(--font-serif);
+      font-size: clamp(19px, 2.5vw, 24px);
+      line-height: 1.6;
+      font-style: italic;
+      color: #fff;
+      margin-bottom: 25px;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+    }
+    .quote-close-btn {
+      padding: 10px 28px;
+      background: linear-gradient(135deg, var(--color-rose), var(--color-rose-deep));
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 133, 161, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .quote-close-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(255, 133, 161, 0.7);
+    }
+
+    /* ============================================================
+       SCENE 3: THE FLOATING LOVE LETTER
+       ============================================================ */
+    #scene3-ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      z-index: 20;
+    }
+    .letter-parchment-wrapper {
+      width: min(92vw, 680px);
+      max-height: 85vh;
+      background: linear-gradient(145deg, rgba(255, 245, 248, 0.96) 0%, rgba(255, 235, 240, 0.94) 100%);
+      border: 2px solid rgba(183, 110, 121, 0.4);
+      border-radius: 20px;
+      padding: clamp(25px, 4vw, 45px);
+      color: #4a2c38;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 133, 161, 0.3), inset 0 0 30px rgba(249, 228, 183, 0.4);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow-y: auto;
+      transform: scale(0.85) translateY(40px);
+      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+    .letter-parchment-wrapper.open {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+    }
+    .letter-parchment-wrapper::-webkit-scrollbar {
+      width: 5px;
+    }
+    .letter-parchment-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(183, 110, 121, 0.4);
+      border-radius: 5px;
+    }
+    .parchment-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 260px;
+      opacity: 0.04;
+      pointer-events: none;
+      font-family: var(--font-script);
+      color: #b76e79;
+    }
+    .letter-header {
+      font-family: var(--font-script);
+      font-size: clamp(34px, 5vw, 48px);
+      color: #9d2b55;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+    .letter-body {
+      font-family: var(--font-serif);
+      font-size: clamp(16px, 2vw, 19px);
+      line-height: 1.8;
+      margin-bottom: 25px;
+      color: #532c3f;
+    }
+    .letter-body p {
+      margin-bottom: 16px;
+      opacity: 0;
+      transform: translateY(15px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .letter-body p.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .letter-signature {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-top: 25px;
+      font-family: var(--font-script);
+      font-size: clamp(26px, 3.5vw, 36px);
+      color: #8c1d48;
+      opacity: 0;
+      transition: opacity 0.8s ease 0.5s;
+    }
+    .letter-signature.revealed {
+      opacity: 1;
+    }
+    .letter-footer-note {
+      font-family: var(--font-body);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #a46d7e;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* Scene 3 Envelope interaction hint */
+    .envelope-hint {
+      position: absolute;
+      bottom: 80px;
+      background: rgba(15, 7, 23, 0.7);
+      padding: 10px 22px;
+      border-radius: 25px;
+      border: 1px solid rgba(255, 133, 161, 0.4);
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: var(--color-gold);
+      animation: bounceHint 2s infinite;
+      pointer-events: none;
+    }
+    @keyframes bounceHint {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Button inside letter to trigger finale */
+    .btn-finale-trigger {
+      display: block;
+      margin: 30px auto 10px;
+      padding: 14px 35px;
+      background: linear-gradient(135deg, #e05780, #c02956);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 8px 25px rgba(224, 87, 128, 0.5);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-finale-trigger:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 0 12px 35px rgba(224, 87, 128, 0.8);
+    }
+
+    /* ============================================================
+       SCENE 4: THE HEART OF FLOWERS (FINALE)
+       ============================================================ */
+    #scene4-ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: clamp(60px, 10vh, 90px) 20px 40px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 1s ease;
+      z-index: 25;
+    }
+    .finale-header-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .finale-sub {
+      font-family: var(--font-display);
+      font-size: clamp(14px, 2.5vw, 24px);
+      letter-spacing: 8px;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(249, 228, 183, 0.7);
+    }
+    .finale-main-title {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 6.5vw, 75px);
+      font-weight: 700;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, #fff 0%, var(--color-rose) 50%, var(--color-gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 25px rgba(255, 133, 161, 0.6));
+      line-height: 1.1;
+      margin-top: 5px;
+    }
+    .finale-date-tag {
+      font-family: var(--font-script);
+      font-size: clamp(40px, 7vw, 70px);
+      color: var(--color-gold-bright);
+      text-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+      margin-top: -10px;
+    }
+    .finale-special-badge {
+      font-size: 13px;
+      letter-spacing: 5px;
+      color: #fff;
+      padding: 6px 20px;
+      border-radius: 20px;
+      background: rgba(255, 133, 161, 0.25);
+      border: 1px solid rgba(255, 133, 161, 0.5);
+      margin-top: 10px;
+      backdrop-filter: blur(10px);
+    }
+    .finale-footer-quote {
+      font-family: var(--font-serif);
+      font-size: clamp(17px, 2.8vw, 24px);
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.95);
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+      max-width: 650px;
+      line-height: 1.6;
+      background: rgba(15, 7, 23, 0.5);
+      padding: 15px 30px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    .finale-actions-row {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+      pointer-events: auto;
+    }
+    .btn-finale-action {
+      padding: 10px 24px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      border-radius: 30px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s;
+    }
+    .btn-finale-action:hover {
+      background: var(--color-rose);
+      border-color: var(--color-rose);
+      box-shadow: 0 0 20px rgba(255, 133, 161, 0.6);
+      transform: scale(1.05);
+    }
+
+    /* Sound Visualizer Bars inside audio button */
+    .sound-bars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 14px;
+    }
+    .sound-bar {
+      width: 2.5px;
+      height: 100%;
+      background-color: #fff;
+      border-radius: 1px;
+      transition: height 0.2s ease;
+    }
+    .sound-bars.active .sound-bar:nth-child(1) { animation: soundAnim 0.8s infinite ease-in-out alternate; }
+    .sound-bars.active .sound-bar:nth-child(2) { animation: soundAnim 1.1s infinite ease-in-out alternate 0.2s; }
+    .sound-bars.active .sound-bar:nth-child(3) { animation: soundAnim 0.7s infinite ease-in-out alternate 0.4s; }
+    .sound-bars.active .sound-bar:nth-child(4) { animation: soundAnim 0.9s infinite ease-in-out alternate 0.1s; }
+    @keyframes soundAnim {
+      0% { height: 20%; }
+      100% { height: 100%; }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .brand-tag { display: none; }
+      .step-label { display: none; }
+      .letter-parchment-wrapper { padding: 22px 18px; }
+      .finale-footer-quote { padding: 10px 18px; font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Canvas for 3D Graphics -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Custom Cursor & Trails (Desktop) -->
+  <div class="custom-cursor" id="custom-cursor"></div>
+
+  <!-- Loading Screen -->
+  <div id="loader">
+    <div class="loader-flower">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="10" fill="#ffd700" />
+        <path d="M50 20 C42 30 42 45 50 50 C58 45 58 30 50 20 Z" fill="#ff85a1" />
+        <path d="M50 80 C42 70 42 55 50 50 C58 55 58 70 50 80 Z" fill="#ff85a1" />
+        <path d="M20 50 C30 42 45 42 50 50 C45 58 30 58 20 50 Z" fill="#ff85a1" />
+        <path d="M80 50 C70 42 55 42 50 50 C55 58 70 58 80 50 Z" fill="#ff85a1" />
+        <path d="M28 28 C39 33 46 43 50 50 C43 46 33 39 28 28 Z" fill="#f9e4b7" />
+        <path d="M72 72 C61 67 54 57 50 50 C57 54 67 61 72 72 Z" fill="#f9e4b7" />
+        <path d="M72 28 C61 33 54 43 50 50 C57 46 67 39 72 28 Z" fill="#f9e4b7" />
+        <path d="M28 72 C39 67 46 57 50 50 C43 54 33 61 28 72 Z" fill="#f9e4b7" />
+      </svg>
+    </div>
+    <div class="loader-title">ĐÓA HOA YÊU THƯƠNG</div>
+    <div class="loader-bar-bg">
+      <div class="loader-bar-fill" id="loader-bar"></div>
+    </div>
+    <div class="loader-status" id="loader-status">Đang chuẩn bị khu vườn cổ tích...</div>
+  </div>
+
+  <!-- UI Overlay -->
+  <div id="ui-layer">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="brand-tag">ĐÓA HOA YÊU THƯƠNG • 20/10</div>
+      
+      <!-- Progress Stepper -->
+      <div class="progress-stepper">
+        <div class="step-dot active" id="dot-1" title="Đóa Hoa"></div>
+        <div class="step-dot" id="dot-2" title="Khu Vườn"></div>
+        <div class="step-dot" id="dot-3" title="Hộp Thư"></div>
+        <div class="step-dot" id="dot-4" title="Trái Tim"></div>
+        <span class="step-label" id="step-label">Đóa Hoa Diệu Kỳ</span>
+      </div>
+
+      <!-- Controls -->
+      <div class="top-controls">
+        <button class="text-action-btn" id="btn-quick-letter" style="color: var(--color-gold); border: 1px solid rgba(249, 228, 183, 0.4); background: rgba(255, 133, 161, 0.25); font-weight: 600; display: flex; align-items: center; gap: 5px;">
+          <span>💌 Hộp Thư 20/10</span>
+        </button>
+        <button class="btn-icon" id="btn-audio" title="Bật/Tắt Nhạc Nền">
+          <div class="sound-bars" id="audio-bars">
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scene 1 UI -->
+    <div id="scene1-ui">
+      <div class="hero-date" id="hero-date">20.10 – GỬI TẶNG CÁC BÔNG HOA NHỎ</div>
+      <div class="hero-subtitle" id="hero-sub">Ngày hôm nay, có một hộp thư và món quà đặc biệt dành riêng cho chị em...</div>
+      <button class="crystal-btn" id="btn-open-gift">
+        <span>🌷 Mở Hộp Thư & Món Quà</span>
+      </button>
+    </div>
+
+    <!-- Scene 2 UI -->
+    <div id="scene2-ui">
+      <div class="garden-nav-container">
+        <div class="garden-instruction">✨ Chạm vào những đóa hoa hoặc bấm hộp thư để mở quà ✨</div>
+        <button class="crystal-btn" id="btn-go-letter" style="padding: 10px 30px; font-size: 13px;">
+          <span>💌 Mở Hộp Thư Tặng</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scene 3 UI: Parchment Letter Overlay -->
+    <div id="scene3-ui">
+      <div class="letter-parchment-wrapper" id="parchment-card">
+        <div class="parchment-watermark">Yêu Thương</div>
+        <h2 class="letter-header" id="letter-title">Gửi Các Cô Gái Của IOAA 2026! 🌷</h2>
+        <div class="letter-body" id="letter-paragraphs">
+          <!-- Populated by JS -->
+        </div>
+        <div class="letter-signature" id="letter-sig">
+          <div>Gửi Trọn Niềm Yêu Thương ❤️</div>
+          <div class="letter-footer-note">20.10.2026 • Ngày Phụ Nữ Việt Nam</div>
+        </div>
+        <button class="btn-finale-trigger" id="btn-to-finale">
+          💖 Nhận Điều Bất Ngờ Cuối Cùng
+        </button>
+      </div>
+      <div class="envelope-hint" id="envelope-click-hint">Chạm vào phong thư để mở Hộp Thư Tặng 20/10</div>
+    </div>
+
+    <!-- Scene 4 UI: Grand Finale -->
+    <div id="scene4-ui">
+      <div class="finale-header-block">
+        <div class="finale-sub">CHÚC MỪNG NGÀY PHỤ NỮ VIỆT NAM</div>
+        <div class="finale-main-title">CHÚC NHỮNG ĐIỀU TUYỆT VỜI NHẤT, TỐT ĐẸP NHẤT ĐẾN CHỊ EM</div>
+        <div class="finale-date-tag">20 / 10</div>
+        <div class="finale-special-badge">Dành tặng người phụ nữ xinh đẹp và duyên dáng</div>
+      </div>
+      
+      <div class="finale-footer-quote">
+        "Chúc chị em luôn được yêu thương, hôm nay và tất cả những ngày sau này. Hãy luôn tự tin, hạnh phúc và mỉm cười thật rạng rỡ nhé!"
+        <div class="finale-actions-row">
+          <button class="btn-finale-action" id="btn-replay">🔄 Trải Nghiệm Lại</button>
+          <button class="btn-finale-action" id="btn-read-again">💌 Đọc Lại Hộp Thư Tặng </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="bottom-bar">
+      <div class="hint-text" id="bottom-hint">Xoay chuột hoặc vuốt để ngắm nhìn không gian 3D</div>
+      <div class="action-links">
+        <button class="text-action-btn" id="btn-toggle-view">Khu Vườn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flower Quote Interactive Modal -->
+  <div class="quote-modal" id="quote-modal">
+    <div class="quote-icon">🌸</div>
+    <div class="quote-text" id="quote-modal-text">Bạn xứng đáng với tất cả những điều đẹp đẽ nhất trên thế giới này.</div>
+    <button class="quote-close-btn" id="quote-close-btn">Nhận Lời Chúc 💖</button>
+  </div>
+
+  <!-- ============================================================
+       JAVASCRIPT APPLICATION CODE
+       ============================================================ -->
+  <script>
+    /* ============================================================
+       1. GLOBAL CONFIGURATION OBJECT (Dễ dàng tùy biến)
+       ============================================================ */
+    const CONFIG = {
+      recipientName: "Những Bông Hoa Của IOAA 2026",
+      senderName: "Tôi",
+      mainGreeting: "20.10 – GỬI TẶNG CHỊ EM TRONG IOAA 2026",
+      subGreeting: "Ngày hôm nay, có một hộp thư và món quà đặc biệt dành riêng cho chị em...",
+      letterTitle: "Gửi Đến Các Cô Gái – Bông Hoa Đẹp Nhất và đặc biệt nhất không ai có thể thế thay ! 🌷",
+      letterContent: [
+         "Chị Đẹp Thảo Trang.",
+        "Em Xinh Bùi Thị Mai Anh .",
+        "Em Xinh Bùi Kim Chi.",
+        "Em Xinh Đào Bảo Chi ",
+        "Em Xinh Vũ Thùy Dương ",
+        "Em Xinh Đỗ Thùy Dương ",
+        "Em Xinh Hoàng Thị Quỳnh Trang ",
+        "Em Xinh Vũ Nguyễn Khánh Huyền ",
+        "Em Xinh Nguyễn Thị Ngọc",
+        "Em Xinh Ngô Lê Na ",
+        "Em Xinh Em Xinh Em Xinh Em Xinh Đẹp Và Lung Linh, Múa Ca Dưới Ánh Bình Minh ",
+        "Chúc Chị em một ngày 20/10 thật hạnh phúc, luôn xinh tươi, rạng rỡ và tràn ngập niềm vui theo cách riêng của mình.",
+        "Cảm ơn các mọi người vì đã đồng hành cùng  anh em chúng tôi trong khoảng thời gian vừa qua .",
+        "Mong rằng mỗi sớm mai thức dậy,chị em đều có một lý do để mỉm cười; mọi ước mơ của chị em đều sớm thành hiện thực và mỗi ngày trôi qua đều cảm nhận được sự yêu thương, chở che và trân trọng.",
+        "Trong mắt anh em chúng tôi,chị em mãi là đóa hoa xinh đẹp nhất, quý giá nhất và xứng đáng với tất cả những điều tuyệt vời nhất trên đời. Yêu thương chị em thật nhiều! ❤️"
+      ],
+      flowerQuotes: [
+        "Bạn là điều ngọt ngào và dịu dàng nhất mà cuộc sống này đã mang đến cho cuộc đời tươi đẹp này. ✨",
+        "Nụ cười của bạn chính là tia nắng xua tan mọi âu lo muọn phiền. 🌸",
+        "Chúc bạn luôn được yêu thương, che chở và có một ngày 20/10 thật trọn vẹn! 💖",
+        "Trong khu vườn ngát hương này,Bạn chính là bông hoa tỏa sắc rực rỡ nhất! 🌷",
+        "Cảm ơn chị em vì đã luôn ở đây, cùng anh em chung tôi tạo nên những khoảnh khắc thật đẹp. 💫",
+        "Mong chị em mãi hồn nhiên, yêu đời và luôn mỉm cười thật tươi nhé! ☀️"
+      ],
+      colors: {
+        rose: 0xff85a1,
+        roseDeep: 0xe05780,
+        gold: 0xf9e4b7,
+        goldGlow: 0xffd700,
+        lavender: 0xd8b4e2,
+        leafGreen: 0x487346,
+        darkNight: 0x0c0614
+      },
+      particleCount: 800,
+      gardenFlowersCount: 160
+    };
+
+    /* ============================================================
+       2. PROCEDURAL TEXTURE GENERATORS (Zero external image dependencies)
+       ============================================================ */
+    const TextureGenerator = {
+      // Glow circular sprite
+      createGlowTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(0.2, 'rgba(255, 200, 220, 0.85)');
+        gradient.addColorStop(0.5, 'rgba(255, 133, 161, 0.4)');
+        gradient.addColorStop(0.8, 'rgba(216, 180, 226, 0.15)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(canvas);
+      },
+
+      // Heart particle texture
+      createHeartTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 128, 128);
+        ctx.translate(64, 68);
+        ctx.scale(2.8, 2.8);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-10, -10, -20, 5, 0, 20);
+        ctx.bezierCurveTo(20, 5, 10, -10, 0, 0);
+        ctx.closePath();
+        
+        const grad = ctx.createRadialGradient(0, 5, 2, 0, 5, 18);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.4, '#ff85a1');
+        grad.addColorStop(0.9, '#e05780');
+        grad.addColorStop(1, 'rgba(224, 87, 128, 0)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        return new THREE.CanvasTexture(canvas);
+      },
+
+      // Rose petal texture with full-bleed velvet gradient (loại bỏ hoàn toàn viền đen)
+      createPetalTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Phủ toàn bộ canvas bằng dải màu nhung đỏ hồng rực rỡ (từ gốc đỏ nhung đến ngọn hồng phấn)
+        const grad = ctx.createLinearGradient(0, 256, 0, 0);
+        grad.addColorStop(0, '#9e0031');   // Đỏ nhung đậm ở cuống cánh
+        grad.addColorStop(0.35, '#d90429'); // Đỏ ruby tươi tắn
+        grad.addColorStop(0.7, '#ff2e63');  // Hồng đào rạng rỡ
+        grad.addColorStop(0.92, '#ff758f'); // Hồng phấn cánh hoa
+        grad.addColorStop(1, '#ffccd5');    // Ánh viền mềm mại ở rìa cánh
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Đường gân cánh hoa mềm mại, tự nhiên
+        ctx.strokeStyle = 'rgba(255, 230, 240, 0.22)';
+        ctx.lineWidth = 1.8;
+        for (let i = -6; i <= 6; i++) {
+          ctx.beginPath();
+          ctx.moveTo(128 + i * 10, 256);
+          ctx.quadraticCurveTo(128 + i * 20, 128, 128 + i * 16, 0);
+          ctx.stroke();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        return tex;
+      },
+
+      // Butterfly wing texture
+      createWingTexture(isRight = false) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 128, 128);
+        grad.addColorStop(0, '#fff');
+        grad.addColorStop(0.3, '#ff85a1');
+        grad.addColorStop(0.7, '#9d4edd');
+        grad.addColorStop(1, '#ffd700');
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        ctx.moveTo(10, 64);
+        ctx.bezierCurveTo(30, 10, 110, 15, 120, 60);
+        ctx.bezierCurveTo(115, 110, 40, 115, 10, 64);
+        ctx.fill();
+
+        // Glow spots
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(80, 50, 6, 0, Math.PI * 2);
+        ctx.arc(95, 75, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        return new THREE.CanvasTexture(canvas);
+      }
+    };
+
+    /* ============================================================
+       3. PROCEDURAL ROMANTIC AUDIO SYNTHESIZER (Web Audio API)
+       Hoàn toàn độc lập, không lo hỏng link MP3 hay lỗi CORS!
+       ============================================================ */
+    class RomanticAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isPlaying = false;
+        this.masterGain = null;
+        this.tempo = 60; // 60 BPM cực kỳ nhẹ nhàng, sâu lắng
+        this.timer = null;
+        this.step = 0;
+
+        // Chuỗi hợp âm tình ca lãng mạn, êm dịu (Dmaj9 - A/C# - Bm9 - Gmaj7 - Em9 - Asus4)
+        this.chords = [
+          [146.83, 220.00, 277.18, 369.99, 440.00, 554.37], // Dmaj9
+          [138.59, 220.00, 277.18, 329.63, 440.00, 554.37], // A/C#
+          [123.47, 185.00, 246.94, 293.66, 369.99, 440.00], // Bm9
+          [98.00, 196.00, 246.94, 293.66, 369.99, 493.88],  // Gmaj7
+          [82.41, 164.81, 246.94, 293.66, 329.63, 392.00],  // Em9
+          [110.00, 220.00, 293.66, 329.63, 440.00, 587.33]  // Asus4
+        ];
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        // Fade in êm ái trong 2.5 giây
+        this.masterGain.gain.linearRampToValueAtTime(0.20, this.ctx.currentTime + 2.5);
+
+        // Lọc âm Lowpass filter 700Hz tạo âm thanh piano đệm nỉ mộc mạc và mềm mại
+        this.filter = this.ctx.createBiquadFilter();
+        this.filter.type = 'lowpass';
+        this.filter.frequency.setValueAtTime(700, this.ctx.currentTime);
+
+        // Hiệu ứng vang mộng mơ (stereo ping-pong delay)
+        this.delay = this.ctx.createDelay();
+        this.delay.delayTime.setValueAtTime(0.50, this.ctx.currentTime);
+        this.delayGain = this.ctx.createGain();
+        this.delayGain.gain.setValueAtTime(0.36, this.ctx.currentTime);
+
+        this.masterGain.connect(this.filter);
+        this.filter.connect(this.ctx.destination);
+
+        // Vòng lặp âm vang
+        this.filter.connect(this.delay);
+        this.delay.connect(this.delayGain);
+        this.delayGain.connect(this.filter);
+      }
+
+      playPianoNote(freq, time, duration = 3.0, volume = 0.18) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const oscHarmonic = this.ctx.createOscillator();
+        const noteGain = this.ctx.createGain();
+
+        // Pha trộn sóng sine và triangle tạo chất âm trong trẻo như chiếc hộp nhạc pha lê
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, time);
+
+        oscHarmonic.type = 'sine';
+        oscHarmonic.frequency.setValueAtTime(freq * 2, time);
+
+        // Biên độ nốt ngân vang từ từ, không sắc gắt
+        noteGain.gain.setValueAtTime(0.0001, time);
+        noteGain.gain.linearRampToValueAtTime(volume, time + 0.08);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        osc.connect(noteGain);
+        oscHarmonic.connect(noteGain);
+        noteGain.connect(this.masterGain);
+
+        osc.start(time);
+        oscHarmonic.start(time);
+        osc.stop(time + duration);
+        oscHarmonic.stop(time + duration);
+      }
+
+      playChime() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+        const notes = [587.33, 739.99, 880.00, 1108.73, 1479.98];
+        notes.forEach((f, idx) => {
+          this.playPianoNote(f, now + idx * 0.09, 3.2, 0.13);
+        });
+      }
+
+      playFireworksSound() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        this.playPianoNote(880 + Math.random() * 300, now, 2.0, 0.10);
+      }
+
+      start() {
+        this.init();
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        this.isPlaying = true;
+        this.step = 0;
+        this.scheduleNotes();
+      }
+
+      stop() {
+        this.isPlaying = false;
+        if (this.timer) clearTimeout(this.timer);
+      }
+
+      scheduleNotes() {
+        if (!this.isPlaying) return;
+        const now = this.ctx.currentTime;
+        const chordIndex = Math.floor(this.step / 8) % this.chords.length;
+        const currentChord = this.chords[chordIndex];
+
+        // Chuỗi rải arpeggio ngọt ngào
+        const noteIndex = this.step % 8;
+        let pitch;
+        if (noteIndex === 0) pitch = currentChord[0]; // Nốt bass êm ái
+        else if (noteIndex === 2) pitch = currentChord[1];
+        else if (noteIndex === 4) pitch = currentChord[2];
+        else if (noteIndex === 6) pitch = currentChord[3];
+        else pitch = currentChord[4] || currentChord[1] * 2;
+
+        // Điểm xuyết nốt nhạc bổng ngân vang dịu dàng
+        if (this.step % 4 === 0) {
+          const highPitch = currentChord[Math.floor(Math.random() * currentChord.length)] * 2;
+          this.playPianoNote(highPitch, now + 0.18, 3.2, 0.09);
+        }
+
+        this.playPianoNote(pitch, now, 2.8, 0.18);
+
+        this.step++;
+        const interval = (60 / this.tempo) * 500; // nhịp chậm rãi
+        this.timer = setTimeout(() => this.scheduleNotes(), interval);
+      }
+
+      toggle() {
+        if (this.isPlaying) {
+          this.stop();
+          return false;
+        } else {
+          this.start();
+          return true;
+        }
+      }
+    }
+
+    const audio = {
+  player: new Audio("./ChamHoa.mp3"),
+  isPlaying: false,
+
+  async start() {
+    this.player.loop = true;
+    this.player.volume = 0.7;
+    await this.player.play();
+    this.isPlaying = true;
+  },
+
+  stop() {
+    this.player.pause();
+    this.isPlaying = false;
+  },
+
+  async toggle() {
+    if (this.isPlaying) {
+      this.stop();
+      return false;
+    }
+
+    await this.start();
+    return this.isPlaying;
+  },
+
+  playChime() {},
+  playFireworksSound() {}
+};
+
+    /* ============================================================
+       4. THREE.JS 3D SCENE & ENGINE ARCHITECTURE
+       ============================================================ */
+    class BloomingLoveExperience {
+      constructor() {
+        this.canvas = document.getElementById('webgl-canvas');
+        this.sceneIndex = 1; // 1: Beginning, 2: Garden, 3: Letter, 4: Heart Finale
+        this.clock = new THREE.Clock();
+
+        this.mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+        this.raycaster = new THREE.Raycaster();
+        this.mouseVector = new THREE.Vector2();
+
+        // 3D Objects references
+        this.roseGroup = null;
+        this.petalsArray = [];
+        this.gardenGroup = null;
+        this.floatingPetals = null;
+        this.butterflies = [];
+        this.fireflies = null;
+        this.interactiveFlowerObjects = [];
+        this.envelopeGroup = null;
+        this.waxSeal = null;
+        this.envelopeFlap = null;
+        this.cardMesh = null;
+        this.finaleHeartSystem = null;
+        this.fireworksArray = [];
+
+        this.init();
+      }
+
+      init() {
+        // 1. Scene, Camera, Renderer
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.FogExp2(CONFIG.colors.darkNight, 0.018);
+
+        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera.position.set(0, 1.5, 14);
+
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: true,
+          alpha: false,
+          powerPreference: 'high-performance'
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.15;
+
+        // 2. Textures
+        this.textures = {
+          glow: TextureGenerator.createGlowTexture(),
+          heart: TextureGenerator.createHeartTexture(),
+          petal: TextureGenerator.createPetalTexture(),
+          wingLeft: TextureGenerator.createWingTexture(false),
+          wingRight: TextureGenerator.createWingTexture(true)
+        };
+
+        // 3. Lighting Setup
+        this.setupLights();
+
+        // 4. Sky dome / Environment
+        this.setupSkyDome();
+
+        // 5. Build 3D Scenes
+        this.buildScene1_Rose();
+        this.buildScene2_Garden();
+        this.buildScene3_Envelope();
+        this.buildScene4_HeartFinale();
+
+        // 6. Global Ambient Particles
+        this.setupFloatingPetals();
+        this.setupFireflies();
+
+        // 7. Event Listeners
+        this.setupEvents();
+
+        // 8. Complete Loading Screen
+        this.finishLoader();
+
+        // 9. Render Loop
+        this.animate();
+      }
+
+      /* ------------------------------------------------------------
+         LIGHTING SETUP
+         ------------------------------------------------------------ */
+      setupLights() {
+        // Soft romantic ambient light
+        this.ambientLight = new THREE.AmbientLight(0xffe4ec, 0.85);
+        this.scene.add(this.ambientLight);
+
+        // Directional golden sunlight with warmth
+        this.sunLight = new THREE.DirectionalLight(0xf9e4b7, 1.2);
+        this.sunLight.position.set(5, 12, 8);
+        this.scene.add(this.sunLight);
+
+        // Front fill light chiếu thẳng vào bông hoa và phong thư
+        this.frontFillLight = new THREE.DirectionalLight(0xffd1dc, 1.1);
+        this.frontFillLight.position.set(0, 4, 10);
+        this.scene.add(this.frontFillLight);
+
+        // Pulsing Point Light centered on blooming elements
+        this.pinkPointLight = new THREE.PointLight(0xff85a1, 2.5, 25);
+        this.pinkPointLight.position.set(0, 2, 4);
+        this.scene.add(this.pinkPointLight);
+
+        // Lavender rim light from back
+        this.rimLight = new THREE.PointLight(0xd8b4e2, 2.0, 30);
+        this.rimLight.position.set(-6, 8, -6);
+        this.scene.add(this.rimLight);
+      }
+
+      /* ------------------------------------------------------------
+         SKY DOME / PROCEDURAL GRADIENT BACKGROUND
+         ------------------------------------------------------------ */
+      setupSkyDome() {
+        const skyGeo = new THREE.SphereGeometry(300, 32, 24);
+        const skyMat = new THREE.ShaderMaterial({
+          uniforms: {
+            topColor: { value: new THREE.Color(0x2a0845) },
+            middleColor: { value: new THREE.Color(0x732858) },
+            bottomColor: { value: new THREE.Color(0x0c0614) },
+            offset: { value: 30 },
+            exponent: { value: 0.8 }
+          },
+          vertexShader: `
+            varying vec3 vWorldPosition;
+            void main() {
+              vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+              vWorldPosition = worldPosition.xyz;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 topColor;
+            uniform vec3 middleColor;
+            uniform vec3 bottomColor;
+            uniform float offset;
+            uniform float exponent;
+            varying vec3 vWorldPosition;
+            void main() {
+              float h = normalize(vWorldPosition + offset).y;
+              vec3 col = mix(bottomColor, middleColor, max(pow(max(h, 0.0), exponent), 0.0));
+              col = mix(col, topColor, max(pow(max(h - 0.35, 0.0), 1.2), 0.0));
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `,
+          side: THREE.BackSide
+        });
+        const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        this.scene.add(skyMesh);
+      }
+
+      /* ------------------------------------------------------------
+         SCENE 1: PROCEDURAL 3D BLOOMING ROSE
+         ------------------------------------------------------------ */
+      buildScene1_Rose() {
+        this.roseGroup = new THREE.Group();
+        this.roseGroup.position.set(0, 0.5, 0);
+
+        // Rose stem
+        const stemCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, -3.5, 0),
+          new THREE.Vector3(0.15, -2, 0.1),
+          new THREE.Vector3(-0.1, -0.6, -0.05),
+          new THREE.Vector3(0, 0.4, 0)
+        ]);
+        const stemGeo = new THREE.TubeGeometry(stemCurve, 32, 0.12, 12, false);
+        const stemMat = new THREE.MeshStandardMaterial({
+          color: CONFIG.colors.leafGreen,
+          roughness: 0.6,
+          metalness: 0.1
+        });
+        const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+        this.roseGroup.add(stemMesh);
+
+        // Sepals (small green leaves right under flower)
+        for (let i = 0; i < 5; i++) {
+          const angle = (i / 5) * Math.PI * 2;
+          const sepalShape = new THREE.Shape();
+          sepalShape.moveTo(0, 0);
+          sepalShape.quadraticCurveTo(0.3, 0.6, 0, 1.4);
+          sepalShape.quadraticCurveTo(-0.3, 0.6, 0, 0);
+          const sepalGeo = new THREE.ShapeGeometry(sepalShape);
+          const sepalMesh = new THREE.Mesh(sepalGeo, stemMat);
+          sepalMesh.position.set(0, 0.35, 0);
+          sepalMesh.rotation.y = angle;
+          sepalMesh.rotation.x = 1.1;
+          sepalMesh.scale.set(0.7, 0.7, 0.7);
+          this.roseGroup.add(sepalMesh);
+        }
+
+        // Realistic Petal Layers (Spiral arrangement)
+        const petalLayers = 7;
+        const petalsPerLayer = [3, 4, 5, 6, 7, 8, 9];
+        this.rosePetalMeshes = [];
+
+        // Base petal geometry
+        const petalShape = new THREE.Shape();
+        petalShape.moveTo(0, 0);
+        petalShape.bezierCurveTo(0.6, 0.4, 0.9, 1.2, 0.6, 2.0);
+        petalShape.bezierCurveTo(0.2, 2.5, -0.2, 2.5, -0.6, 2.0);
+        petalShape.bezierCurveTo(-0.9, 1.2, -0.6, 0.4, 0, 0);
+
+        const basePetalGeo = new THREE.ShapeGeometry(petalShape, 12);
+        
+        // Add curve to geometry vertices to make petals bowl-like
+        const pos = basePetalGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const y = pos.getY(i);
+          const x = pos.getX(i);
+          pos.setZ(i, -Math.sin((y / 2.0) * Math.PI) * 0.45 * (1 - Math.abs(x) * 0.4));
+        }
+        basePetalGeo.computeVertexNormals();
+
+        let layerRadius = 0.15;
+        let layerHeight = 0.4;
+
+        petalsPerLayer.forEach((count, lIndex) => {
+          const scale = 0.55 + lIndex * 0.22;
+          const angleStep = (Math.PI * 2) / count;
+          const offsetAngle = (lIndex * 137.5 * Math.PI) / 180; // Golden angle spiral
+
+          for (let p = 0; p < count; p++) {
+            const angle = p * angleStep + offsetAngle;
+
+            // Velvet rose petal material with warm emissive glow & two-sided rendering
+            const petalColor = lIndex < 2 ? 0xff1e56 : (lIndex < 4 ? 0xff3b75 : 0xff6694);
+            const petalMat = new THREE.MeshStandardMaterial({
+              color: petalColor,
+              roughness: 0.32,
+              metalness: 0.05,
+              side: THREE.DoubleSide,
+              map: this.textures.petal,
+              emissive: 0x5a0b22,
+              emissiveIntensity: 0.45
+            });
+
+            const petalMesh = new THREE.Mesh(basePetalGeo, petalMat);
+            petalMesh.scale.set(scale, scale, scale);
+
+            // Pivot container for smooth blooming rotation
+            const pivot = new THREE.Group();
+            pivot.position.set(
+              Math.cos(angle) * layerRadius,
+              layerHeight + lIndex * 0.08,
+              Math.sin(angle) * layerRadius
+            );
+            pivot.rotation.y = angle + Math.PI / 2;
+
+            // Closed bud angle vs open angle
+            const closedRotX = 0.15 + lIndex * 0.05;
+            const openRotX = 0.65 + lIndex * 0.16;
+
+            pivot.rotation.x = closedRotX;
+            pivot.userData = {
+              closedRotX: closedRotX,
+              openRotX: openRotX,
+              layerIndex: lIndex,
+              angle: angle
+            };
+
+            petalMesh.position.y = 0;
+            pivot.add(petalMesh);
+            this.roseGroup.add(pivot);
+            this.rosePetalMeshes.push(pivot);
+          }
+          layerRadius += 0.14;
+        });
+
+        // Glowing center core of the rose
+        const coreGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const coreMat = new THREE.MeshBasicMaterial({
+          color: 0xffe066,
+          wireframe: false
+        });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        coreMesh.position.set(0, 0.8, 0);
+        this.roseGroup.add(coreMesh);
+
+        // Internal warm glowing point light inside the rose bud
+        const roseInnerLight = new THREE.PointLight(0xff3366, 3.2, 10);
+        roseInnerLight.position.set(0, 1.0, 0);
+        this.roseGroup.add(roseInnerLight);
+
+        // Core light sprite
+        const spriteMat = new THREE.SpriteMaterial({
+          map: this.textures.glow,
+          color: 0xffd700,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.85
+        });
+        this.roseCoreSprite = new THREE.Sprite(spriteMat);
+        this.roseCoreSprite.scale.set(3, 3, 3);
+        this.roseCoreSprite.position.set(0, 0.9, 0);
+        this.roseGroup.add(this.roseCoreSprite);
+
+        this.scene.add(this.roseGroup);
+      }
+
+      /* ------------------------------------------------------------
+         SCENE 2: PROCEDURAL ENCHANTED FLOWER GARDEN
+         ------------------------------------------------------------ */
+      buildScene2_Garden() {
+        this.gardenGroup = new THREE.Group();
+        this.gardenGroup.position.set(0, -3.5, 0);
+        this.gardenGroup.visible = false;
+
+        // Fairytale undulating ground terrain
+        const groundGeo = new THREE.PlaneGeometry(120, 120, 64, 64);
+        const pos = groundGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const vx = pos.getX(i);
+          const vy = pos.getY(i);
+          const dist = Math.sqrt(vx * vx + vy * vy);
+          const z = Math.sin(vx * 0.12) * Math.cos(vy * 0.12) * 1.2 + Math.sin(dist * 0.08) * 0.8;
+          pos.setZ(i, z);
+        }
+        groundGeo.computeVertexNormals();
+
+        const groundMat = new THREE.MeshStandardMaterial({
+          color: 0x181024,
+          roughness: 0.85,
+          metalness: 0.1
+        });
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        this.gardenGroup.add(groundMesh);
+
+        // Populate hundreds of colorful flowers (Roses, Tulips, Chamomiles)
+        this.interactiveFlowerObjects = [];
+        const flowerCount = CONFIG.gardenFlowersCount;
+        const flowerColors = [0xff85a1, 0xffa3ba, 0xffc6d9, 0xd8b4e2, 0xffe57f, 0xff5d8f];
+
+        for (let i = 0; i < flowerCount; i++) {
+          const flower = new THREE.Group();
+          
+          // Position spread across circular meadow, leaving a small pathway at center
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 3.5 + Math.random() * 26;
+          const x = Math.cos(angle) * dist;
+          const z = Math.sin(angle) * dist;
+          const y = Math.sin(x * 0.12) * Math.cos(z * 0.12) * 1.2 + 0.3;
+
+          flower.position.set(x, y, z);
+          flower.rotation.y = Math.random() * Math.PI * 2;
+          const s = 0.55 + Math.random() * 0.65;
+          flower.scale.set(s, s, s);
+
+          // Flower stem
+          const stemGeo = new THREE.CylinderGeometry(0.04, 0.06, 2.2, 6);
+          const stemMat = new THREE.MeshStandardMaterial({ color: 0x3d663e });
+          const stem = new THREE.Mesh(stemGeo, stemMat);
+          stem.position.y = 1.1;
+          flower.add(stem);
+
+          // Flower Head
+          const headGroup = new THREE.Group();
+          headGroup.position.y = 2.2;
+          
+          const flowerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+          const flowerType = i % 3; // 0: Rose-like, 1: Tulip-like, 2: Daisy/Chamomile
+
+          if (flowerType === 0) {
+            // Little rose-like blossom
+            const blossomGeo = new THREE.DodecahedronGeometry(0.45, 1);
+            const blossomMat = new THREE.MeshStandardMaterial({
+              color: flowerColor,
+              roughness: 0.4,
+              metalness: 0.2
+            });
+            const blossom = new THREE.Mesh(blossomGeo, blossomMat);
+            headGroup.add(blossom);
+          } else if (flowerType === 1) {
+            // Tulip cup
+            const tulipGeo = new THREE.ConeGeometry(0.42, 0.75, 7, 1, true);
+            const tulipMat = new THREE.MeshStandardMaterial({
+              color: flowerColor,
+              roughness: 0.35,
+              side: THREE.DoubleSide
+            });
+            const tulip = new THREE.Mesh(tulipGeo, tulipMat);
+            tulip.rotation.x = Math.PI;
+            tulip.position.y = 0.2;
+            headGroup.add(tulip);
+          } else {
+            // Daisy / chamomile with golden center
+            const centerGeo = new THREE.SphereGeometry(0.2, 10, 10);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+            const center = new THREE.Mesh(centerGeo, centerMat);
+            headGroup.add(center);
+
+            for (let p = 0; p < 8; p++) {
+              const petalGeo = new THREE.BoxGeometry(0.18, 0.03, 0.5);
+              const petalMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+              const pMesh = new THREE.Mesh(petalGeo, petalMat);
+              pMesh.position.z = 0.28;
+              const pPivot = new THREE.Group();
+              pPivot.rotation.y = (p / 8) * Math.PI * 2;
+              pPivot.add(pMesh);
+              headGroup.add(pPivot);
+            }
+          }
+
+          flower.add(headGroup);
+
+          // Mark some prominent flowers in foreground as interactive
+          if (dist > 4 && dist < 12 && this.interactiveFlowerObjects.length < 8) {
+            // Little glowing highlight ring around interactive flower
+            const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+              map: this.textures.glow,
+              color: 0xffd700,
+              blending: THREE.AdditiveBlending,
+              transparent: true,
+              opacity: 0.75
+            }));
+            haloSprite.scale.set(1.5, 1.5, 1.5);
+            haloSprite.position.y = 2.4;
+            flower.add(haloSprite);
+
+            flower.userData = {
+              isInteractive: true,
+              quote: CONFIG.flowerQuotes[this.interactiveFlowerObjects.length % CONFIG.flowerQuotes.length],
+              baseScale: s,
+              headGroup: headGroup
+            };
+            this.interactiveFlowerObjects.push(flower);
+          }
+
+          flower.userData.windPhase = Math.random() * Math.PI * 2;
+          flower.userData.windSpeed = 1.2 + Math.random() * 1.5;
+          this.gardenGroup.add(flower);
+        }
+
+        // Butterflies flying in garden
+        this.setupButterflies();
+
+        // 3D Floating Heart of Light in background
+        this.setupGardenBackgroundHeart();
+
+        this.scene.add(this.gardenGroup);
+      }
+
+      /* Glowing 3D Heart of Light in Garden Background */
+      setupGardenBackgroundHeart() {
+        const heartShape = new THREE.Shape();
+        const x = 0, y = 0;
+        heartShape.moveTo(x + 2.5, y + 2.5);
+        heartShape.bezierCurveTo(x + 2.5, y + 2.5, x + 2.0, y, x, y);
+        heartShape.bezierCurveTo(x - 3.0, y, x - 3.0, y + 3.5, x - 3.0, y + 3.5);
+        heartShape.bezierCurveTo(x - 3.0, y + 5.5, x - 1.0, y + 7.7, x + 2.5, y + 9.5);
+        heartShape.bezierCurveTo(x + 6.0, y + 7.7, x + 8.0, y + 5.5, x + 8.0, y + 3.5);
+        heartShape.bezierCurveTo(x + 8.0, y + 3.5, x + 8.0, y, x + 5.0, y);
+        heartShape.bezierCurveTo(x + 3.5, y, x + 2.5, y + 2.5, x + 2.5, y + 2.5);
+
+        const extrudeSettings = { depth: 0.8, bevelEnabled: true, bevelSegments: 5, steps: 2, bevelSize: 0.4, bevelThickness: 0.4 };
+        const heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+        heartGeo.center();
+
+        const heartMat = new THREE.MeshStandardMaterial({
+          color: CONFIG.colors.rose,
+          roughness: 0.25,
+          metalness: 0.8,
+          emissive: 0x8a234b,
+          emissiveIntensity: 0.75
+        });
+
+        this.gardenHeart = new THREE.Mesh(heartGeo, heartMat);
+        this.gardenHeart.position.set(0, 10, -22);
+        this.gardenHeart.rotation.z = Math.PI;
+        this.gardenHeart.scale.set(0.9, 0.9, 0.9);
+        this.gardenGroup.add(this.gardenHeart);
+
+        // Huge halo glow behind heart
+        const bgHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: this.textures.glow,
+          color: 0xff85a1,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.85
+        }));
+        bgHalo.scale.set(28, 28, 1);
+        bgHalo.position.set(0, 10, -23);
+        this.gardenGroup.add(bgHalo);
+      }
+
+      /* Glowing Animated Butterflies */
+      setupButterflies() {
+        this.butterflies = [];
+        const butterflyCount = 6;
+        for (let i = 0; i < butterflyCount; i++) {
+          const bGroup = new THREE.Group();
+
+          // Wings
+          const wingGeo = new THREE.PlaneGeometry(0.7, 0.7);
+          const leftWingMat = new THREE.MeshBasicMaterial({
+            map: this.textures.wingLeft,
+            side: THREE.DoubleSide,
+            transparent: true
+          });
+          const rightWingMat = new THREE.MeshBasicMaterial({
+            map: this.textures.wingRight,
+            side: THREE.DoubleSide,
+            transparent: true
+          });
+
+          const leftWing = new THREE.Mesh(wingGeo, leftWingMat);
+          leftWing.position.x = -0.35;
+          const leftPivot = new THREE.Group();
+          leftPivot.add(leftWing);
+
+          const rightWing = new THREE.Mesh(wingGeo, rightWingMat);
+          rightWing.position.x = 0.35;
+          const rightPivot = new THREE.Group();
+          rightPivot.add(rightWing);
+
+          bGroup.add(leftPivot);
+          bGroup.add(rightPivot);
+
+          // Glow light around butterfly
+          const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: this.textures.glow,
+            color: 0xffd700,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.7
+          }));
+          glow.scale.set(1.2, 1.2, 1.2);
+          bGroup.add(glow);
+
+          bGroup.userData = {
+            leftPivot: leftPivot,
+            rightPivot: rightPivot,
+            radiusX: 4 + Math.random() * 8,
+            radiusZ: 4 + Math.random() * 8,
+            speed: 0.6 + Math.random() * 0.5,
+            heightBase: 2.5 + Math.random() * 3,
+            flapSpeed: 16 + Math.random() * 8,
+            angleOffset: (i / butterflyCount) * Math.PI * 2
+          };
+
+          this.gardenGroup.add(bGroup);
+          this.butterflies.push(bGroup);
+        }
+      }
+
+      /* ------------------------------------------------------------
+         SCENE 3: THE FLOATING 3D ROSE GOLD ENVELOPE
+         ------------------------------------------------------------ */
+      buildScene3_Envelope() {
+        this.envelopeGroup = new THREE.Group();
+        this.envelopeGroup.position.set(0, 0, 0);
+        this.envelopeGroup.visible = false;
+
+        const roseGoldMat = new THREE.MeshStandardMaterial({
+          color: 0xd47f97,
+          metalness: 0.75,
+          roughness: 0.3,
+          side: THREE.DoubleSide
+        });
+
+        const envelopeWidth = 4.2;
+        const envelopeHeight = 2.8;
+
+        // Envelope Base Pocket
+        const baseGeo = new THREE.BoxGeometry(envelopeWidth, envelopeHeight, 0.12);
+        const baseMesh = new THREE.Mesh(baseGeo, roseGoldMat);
+        this.envelopeGroup.add(baseMesh);
+
+        // Gold Trim Border
+        const borderGeo = new THREE.BoxGeometry(envelopeWidth + 0.08, envelopeHeight + 0.08, 0.08);
+        const borderMat = new THREE.MeshStandardMaterial({
+          color: CONFIG.colors.gold,
+          metalness: 0.9,
+          roughness: 0.2
+        });
+        const borderMesh = new THREE.Mesh(borderGeo, borderMat);
+        borderMesh.position.z = -0.03;
+        this.envelopeGroup.add(borderMesh);
+
+        // Triangular Flap with pivot at top
+        const flapShape = new THREE.Shape();
+        flapShape.moveTo(-envelopeWidth / 2, 0);
+        flapShape.lineTo(envelopeWidth / 2, 0);
+        flapShape.lineTo(0, -envelopeHeight * 0.68);
+        flapShape.closePath();
+
+        const flapGeo = new THREE.ShapeGeometry(flapShape);
+        const flapMesh = new THREE.Mesh(flapGeo, roseGoldMat);
+
+        this.envelopeFlap = new THREE.Group();
+        this.envelopeFlap.position.set(0, envelopeHeight / 2, 0.07);
+        flapMesh.position.set(0, 0, 0);
+        this.envelopeFlap.add(flapMesh);
+
+        // Wax Seal with embossed Heart attached to flap
+        const sealGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.12, 24);
+        const sealMat = new THREE.MeshStandardMaterial({
+          color: 0xba1a48,
+          metalness: 0.5,
+          roughness: 0.25
+        });
+        this.waxSeal = new THREE.Mesh(sealGeo, sealMat);
+        this.waxSeal.rotation.x = Math.PI / 2;
+        this.waxSeal.position.set(0, -envelopeHeight * 0.65, 0.06);
+
+        // Heart detail on wax seal
+        const sealHeartSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: this.textures.heart,
+          color: 0xffd700,
+          transparent: true
+        }));
+        sealHeartSprite.scale.set(0.5, 0.5, 0.5);
+        sealHeartSprite.position.set(0, 0, 0.08);
+        this.waxSeal.add(sealHeartSprite);
+
+        this.envelopeFlap.add(this.waxSeal);
+        this.envelopeGroup.add(this.envelopeFlap);
+
+        // 3D Sliding Card inside
+        const cardGeo = new THREE.PlaneGeometry(envelopeWidth * 0.92, envelopeHeight * 0.88);
+        const cardMat = new THREE.MeshStandardMaterial({
+          color: 0xfff5f8,
+          roughness: 0.5,
+          side: THREE.DoubleSide
+        });
+        this.cardMesh = new THREE.Mesh(cardGeo, cardMat);
+        this.cardMesh.position.set(0, 0, 0.02);
+        this.envelopeGroup.add(this.cardMesh);
+
+        // Golden Ribbon Bands
+        const ribbonMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          metalness: 0.85,
+          roughness: 0.25
+        });
+        const ribbonH = new THREE.Mesh(new THREE.BoxGeometry(envelopeWidth + 0.05, 0.35, 0.13), ribbonMat);
+        ribbonH.position.set(0, -0.3, 0.01);
+        this.envelopeGroup.add(ribbonH);
+
+        const ribbonV = new THREE.Mesh(new THREE.BoxGeometry(0.35, envelopeHeight + 0.05, 0.13), ribbonMat);
+        ribbonV.position.set(0, 0, 0.01);
+        this.envelopeGroup.add(ribbonV);
+
+        // 3D Tag: "💌 HỘP THƯ TẶNG EM 20/10"
+        const tagCanvas = document.createElement('canvas');
+        tagCanvas.width = 512;
+        tagCanvas.height = 128;
+        const tagCtx = tagCanvas.getContext('2d');
+        tagCtx.fillStyle = 'rgba(255, 240, 245, 0.95)';
+        tagCtx.beginPath();
+        tagCtx.arc(35, 64, 30, 0, Math.PI * 2);
+        tagCtx.arc(477, 64, 30, 0, Math.PI * 2);
+        tagCtx.rect(35, 10, 442, 108);
+        tagCtx.fill();
+        tagCtx.lineWidth = 5;
+        tagCtx.strokeStyle = '#ffd700';
+        tagCtx.stroke();
+        tagCtx.font = 'bold 36px "Montserrat", sans-serif';
+        tagCtx.fillStyle = '#b71c4a';
+        tagCtx.textAlign = 'center';
+        tagCtx.textBaseline = 'middle';
+        tagCtx.fillText('💌 HỘP THƯ TẶNG EM 20/10', 256, 64);
+        const tagTex = new THREE.CanvasTexture(tagCanvas);
+        const tagMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.75), new THREE.MeshBasicMaterial({ map: tagTex, transparent: true }));
+        tagMesh.position.set(0, 0.6, 0.12);
+        this.envelopeGroup.add(tagMesh);
+
+        // Floating halo behind envelope
+        const envelopeHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: this.textures.glow,
+          color: 0xf9e4b7,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.8
+        }));
+        envelopeHalo.scale.set(9, 9, 1);
+        envelopeHalo.position.set(0, 0, -0.6);
+        this.envelopeGroup.add(envelopeHalo);
+
+        this.scene.add(this.envelopeGroup);
+      }
+
+      /* ------------------------------------------------------------
+         SCENE 4: GRAND FINALE - 3D HEART OF FLOWERS & FIREWORKS
+         ------------------------------------------------------------ */
+      buildScene4_HeartFinale() {
+        this.finaleGroup = new THREE.Group();
+        this.finaleGroup.position.set(0, 1.2, 0);
+        this.finaleGroup.visible = false;
+
+        const particleCount = 1800;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const targetPositions = new Float32Array(particleCount * 3);
+        const startPositions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+
+        const colorPink = new THREE.Color(0xff85a1);
+        const colorGold = new THREE.Color(0xffd700);
+        const colorRoseDeep = new THREE.Color(0xe05780);
+        const colorWhite = new THREE.Color(0xffffff);
+
+        for (let i = 0; i < particleCount; i++) {
+          // Mathematical 3D Parametric Heart Formula
+          // x = 16 sin^3(t)
+          // y = 13 cos(t) - 5 cos(2t) - 2 cos(3t) - cos(4t)
+          // z = depth volume
+          const t = Math.random() * Math.PI * 2;
+          const scale = 0.28;
+          const hx = 16 * Math.pow(Math.sin(t), 3) * scale;
+          const hy = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale;
+          
+          // Internal volume filling
+          const rVolume = Math.pow(Math.random(), 0.5);
+          const hz = (Math.random() - 0.5) * 2.8 * (1 - Math.abs(hy) * 0.15);
+
+          targetPositions[i * 3] = hx * rVolume;
+          targetPositions[i * 3 + 1] = hy * rVolume;
+          targetPositions[i * 3 + 2] = hz;
+
+          // Start explosion scatter positions (flying from all outer edges)
+          const scatterAngle = Math.random() * Math.PI * 2;
+          const scatterDist = 25 + Math.random() * 30;
+          startPositions[i * 3] = Math.cos(scatterAngle) * scatterDist;
+          startPositions[i * 3 + 1] = (Math.random() - 0.5) * 35;
+          startPositions[i * 3 + 2] = (Math.random() - 0.5) * 30;
+
+          // Initial positions match start
+          positions[i * 3] = startPositions[i * 3];
+          positions[i * 3 + 1] = startPositions[i * 3 + 1];
+          positions[i * 3 + 2] = startPositions[i * 3 + 2];
+
+          // Colors
+          const rCol = Math.random();
+          let c = colorPink;
+          if (rCol < 0.3) c = colorGold;
+          else if (rCol < 0.7) c = colorRoseDeep;
+          else if (rCol < 0.85) c = colorWhite;
+
+          colors[i * 3] = c.r;
+          colors[i * 3 + 1] = c.g;
+          colors[i * 3 + 2] = c.b;
+
+          sizes[i] = 0.35 + Math.random() * 0.45;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        this.heartPointsMaterial = new THREE.PointsMaterial({
+          size: 0.6,
+          vertexColors: true,
+          map: this.textures.heart,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.95,
+          depthWrite: false
+        });
+
+        this.finaleHeartMesh = new THREE.Points(geometry, this.heartPointsMaterial);
+        this.finaleGroup.add(this.finaleHeartMesh);
+
+        // Core pulsating glow in heart center
+        this.finaleCenterGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: this.textures.glow,
+          color: 0xff85a1,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.8
+        }));
+        this.finaleCenterGlow.scale.set(12, 12, 1);
+        this.finaleGroup.add(this.finaleCenterGlow);
+
+        this.finalePositions = positions;
+        this.finaleStartPositions = startPositions;
+        this.finaleTargetPositions = targetPositions;
+        this.heartAssemblyProgress = 0;
+
+        this.scene.add(this.finaleGroup);
+      }
+
+      /* ------------------------------------------------------------
+         GLOBAL AMBIENT PARTICLES (Floating Petals & Fireflies)
+         ------------------------------------------------------------ */
+      setupFloatingPetals() {
+        const count = 350;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        const rot = new Float32Array(count * 3);
+        const spd = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          pos[i * 3] = (Math.random() - 0.5) * 35;
+          pos[i * 3 + 1] = (Math.random() - 0.5) * 25 + 5;
+          pos[i * 3 + 2] = (Math.random() - 0.5) * 35;
+
+          rot[i * 3] = Math.random() * Math.PI;
+          rot[i * 3 + 1] = Math.random() * Math.PI;
+          rot[i * 3 + 2] = Math.random() * Math.PI;
+
+          spd[i * 3] = (Math.random() - 0.5) * 0.02;
+          spd[i * 3 + 1] = 0.015 + Math.random() * 0.035; // Falling speed
+          spd[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({
+          size: 0.45,
+          map: this.textures.petal,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.NormalBlending,
+          depthWrite: false
+        });
+
+        this.floatingPetals = new THREE.Points(geo, mat);
+        this.floatingPetalData = { pos, rot, spd, count };
+        this.scene.add(this.floatingPetals);
+      }
+
+      setupFireflies() {
+        const count = 120;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          pos[i * 3] = (Math.random() - 0.5) * 30;
+          pos[i * 3 + 1] = Math.random() * 12 - 2;
+          pos[i * 3 + 2] = (Math.random() - 0.5) * 30;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({
+          size: 0.4,
+          map: this.textures.glow,
+          color: 0xfff099,
+          transparent: true,
+          opacity: 0.9,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        });
+
+        this.fireflies = new THREE.Points(geo, mat);
+        this.firefliesPos = pos;
+        this.scene.add(this.fireflies);
+      }
+
+      /* ------------------------------------------------------------
+         FIREWORKS GENERATOR FOR GRAND FINALE
+         ------------------------------------------------------------ */
+      launchFirework(originX, originY, originZ) {
+        audio.playFireworksSound();
+        const particleCount = 75;
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
+
+        const colors = [0xff85a1, 0xffd700, 0xffffff, 0xd8b4e2];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        for (let i = 0; i < particleCount; i++) {
+          positions[i * 3] = originX;
+          positions[i * 3 + 1] = originY;
+          positions[i * 3 + 2] = originZ;
+
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.random() * Math.PI;
+          const speed = 0.08 + Math.random() * 0.16;
+
+          velocities[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
+          velocities[i * 3 + 1] = Math.cos(phi) * speed;
+          velocities[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * speed;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const mat = new THREE.PointsMaterial({
+          size: 0.5,
+          map: this.textures.glow,
+          color: color,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: false
+        });
+
+        const firework = new THREE.Points(geo, mat);
+        firework.userData = {
+          positions,
+          velocities,
+          life: 1.0,
+          decay: 0.016 + Math.random() * 0.012
+        };
+
+        this.scene.add(firework);
+        this.fireworksArray.push(firework);
+      }
+
+      /* ------------------------------------------------------------
+         TRANSITIONS & SCENE CONTROLLERS (GSAP Orchestration)
+         ------------------------------------------------------------ */
+      
+      // Transition: Scene 1 -> Scene 2 (Khu Vườn Tình Yêu)
+      goToScene2() {
+        if (this.sceneIndex === 2) return;
+        this.sceneIndex = 2;
+        audio.playChime();
+
+        this.updateStepper(2, "Khu Vườn Tình Yêu");
+
+        // Ẩn sạch các cảnh khác
+        this.envelopeGroup.visible = false;
+        this.finaleGroup.visible = false;
+        gsap.to('#scene1-ui', { opacity: 0, y: -20, duration: 0.5, pointerEvents: 'none' });
+        gsap.to('#scene3-ui', { opacity: 0, duration: 0.5, pointerEvents: 'none' });
+        gsap.to('#scene4-ui', { opacity: 0, duration: 0.5, pointerEvents: 'none' });
+        
+        // Rose blooming flare & camera glide
+        this.rosePetalMeshes.forEach(p => {
+          gsap.to(p.rotation, {
+            x: p.userData.openRotX + 0.3,
+            duration: 1.8,
+            ease: "back.out(1.5)"
+          });
+        });
+
+        gsap.to(this.roseCoreSprite.scale, { x: 14, y: 14, duration: 1.2, ease: "power2.in" });
+        gsap.to(this.roseCoreSprite.material, { opacity: 0, duration: 1.4 });
+
+        // Camera flies forward through the petals into the Garden
+        gsap.to(this.camera.position, {
+          x: 0,
+          y: 3.0,
+          z: 7.5,
+          duration: 2.2,
+          ease: "power2.inOut",
+          onComplete: () => {
+            this.roseGroup.visible = false;
+            this.gardenGroup.visible = true;
+            gsap.to('#scene2-ui', { opacity: 1, duration: 0.8, pointerEvents: 'auto' });
+            document.getElementById('bottom-hint').textContent = "Chạm vào những bông hoa phát sáng hoặc xoay góc nhìn";
+          }
+        });
+      }
+
+      // Transition: Scene 2 -> Scene 3 (Hộp Thư Tặng Em)
+      goToScene3() {
+        if (this.sceneIndex === 3) return;
+        this.sceneIndex = 3;
+        audio.playChime();
+
+        this.updateStepper(3, "Hộp Thư Tặng Em");
+
+        // Ẩn sạch sẽ toàn bộ cảnh 1, 2, 4
+        this.roseGroup.visible = false;
+        this.gardenGroup.visible = false;
+        this.finaleGroup.visible = false;
+        this.envelopeGroup.visible = true;
+
+        gsap.to('#scene1-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+        gsap.to('#scene2-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+        gsap.to('#scene4-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+
+        // Show Envelope
+        this.envelopeGroup.position.set(0, 0, 5);
+        this.envelopeGroup.scale.set(0.2, 0.2, 0.2);
+
+        // Camera dollies smoothly
+        gsap.to(this.camera.position, {
+          x: 0,
+          y: 0.8,
+          z: 8.5,
+          duration: 1.8,
+          ease: "power3.inOut"
+        });
+
+        gsap.to(this.envelopeGroup.position, { x: 0, y: 0.5, z: 0, duration: 1.6, ease: "power2.out" });
+        gsap.to(this.envelopeGroup.scale, {
+          x: 1, y: 1, z: 1, duration: 1.6, ease: "back.out(1.2)",
+          onComplete: () => {
+            gsap.to('#scene3-ui', { opacity: 1, duration: 0.8, pointerEvents: 'auto' });
+            document.getElementById('envelope-click-hint').style.display = 'block';
+            document.getElementById('bottom-hint').textContent = "Chạm vào phong thư để đọc lá thư tình yêu";
+          }
+        });
+      }
+
+      // Open the 3D Envelope and reveal Letter Card
+      openEnvelopeAndCard() {
+        audio.playChime();
+        document.getElementById('envelope-click-hint').style.display = 'none';
+
+        // 1. Wax seal cracks and fades with golden burst
+        gsap.to(this.waxSeal.scale, { x: 1.6, y: 1.6, z: 1.6, duration: 0.3 });
+        gsap.to(this.waxSeal.material, { opacity: 0, duration: 0.5 });
+
+        // 2. Flap unfolds open smoothly
+        gsap.to(this.envelopeFlap.rotation, {
+          x: -Math.PI * 0.85,
+          duration: 1.2,
+          ease: "power2.inOut",
+          delay: 0.2
+        });
+
+        // 3. Card slides up
+        gsap.to(this.cardMesh.position, {
+          y: 2.2,
+          duration: 1.0,
+          ease: "power2.out",
+          delay: 0.8
+        });
+
+        // 4. Reveal parchment overlay with typewriter stagger
+        setTimeout(() => {
+          const parchment = document.getElementById('parchment-card');
+          parchment.classList.add('open');
+          
+          // Animate paragraphs sequentially
+          const paragraphs = document.querySelectorAll('#letter-paragraphs p');
+          paragraphs.forEach((p, idx) => {
+            setTimeout(() => {
+              p.classList.add('revealed');
+            }, 400 + idx * 800);
+          });
+
+          // Signature reveal
+          setTimeout(() => {
+            document.getElementById('letter-sig').classList.add('revealed');
+          }, 400 + paragraphs.length * 800 + 400);
+
+        }, 1200);
+      }
+
+      // Transition: Scene 3 -> Scene 4 (Trái Tim Ngàn Hoa)
+      goToScene4() {
+        this.sceneIndex = 4;
+        audio.playChime();
+
+        this.updateStepper(4, "Trái Tim Ngàn Hoa");
+        
+        // ẨN TRIỆT ĐỂ TOÀN BỘ CÁC CẢNH KHÁC (Không để hoa hồng hay UI scene 1, 2, 3 xuất hiện)
+        this.roseGroup.visible = false;
+        this.gardenGroup.visible = false;
+        this.envelopeGroup.visible = false;
+        this.finaleGroup.visible = true;
+
+        gsap.to('#scene1-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+        gsap.to('#scene2-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+        gsap.to('#scene3-ui', { opacity: 0, duration: 0.4, pointerEvents: 'none' });
+        gsap.to(this.envelopeGroup.scale, { x: 0, y: 0, z: 0, duration: 0.8 });
+
+        // Camera dollies back into a majestic cinematic wide angle
+        gsap.to(this.camera.position, {
+          x: 0,
+          y: 1.8,
+          z: 16.5,
+          duration: 2.5,
+          ease: "power2.inOut"
+        });
+
+        // Petals assemble into 3D Heart via GSAP progress interpolation
+        const self = this;
+        gsap.to(this, {
+          heartAssemblyProgress: 1.0,
+          duration: 3.2,
+          ease: "power3.out",
+          onUpdate: () => {
+            const prog = self.heartAssemblyProgress;
+            const p = self.finalePositions;
+            const s = self.finaleStartPositions;
+            const t = self.finaleTargetPositions;
+            const len = p.length / 3;
+
+            for (let i = 0; i < len; i++) {
+              p[i * 3] = s[i * 3] + (t[i * 3] - s[i * 3]) * prog;
+              p[i * 3 + 1] = s[i * 3 + 1] + (t[i * 3 + 1] - s[i * 3 + 1]) * prog;
+              p[i * 3 + 2] = s[i * 3 + 2] + (t[i * 3 + 2] - s[i * 3 + 2]) * prog;
+            }
+            self.finaleHeartMesh.geometry.attributes.position.needsUpdate = true;
+          },
+          onComplete: () => {
+            gsap.to('#scene4-ui', { opacity: 1, duration: 1.0, pointerEvents: 'auto' });
+            document.getElementById('bottom-hint').textContent = "Nhấp bất kỳ đâu để phóng pháo hoa chúc mừng";
+            
+            // Launch celebration fireworks
+            for (let i = 0; i < 6; i++) {
+              setTimeout(() => {
+                const rx = (Math.random() - 0.5) * 16;
+                const ry = 4 + Math.random() * 8;
+                const rz = -2 + (Math.random() - 0.5) * 10;
+                self.launchFirework(rx, ry, rz);
+              }, i * 450);
+            }
+          }
+        });
+      }
+
+      // Replay experience from Scene 1
+      replayExperience() {
+        this.sceneIndex = 1;
+        this.updateStepper(1, "Đóa Hoa Diệu Kỳ");
+
+        gsap.to('#scene4-ui', { opacity: 0, duration: 0.5, pointerEvents: 'none' });
+        gsap.to('#scene3-ui', { opacity: 0, duration: 0.5, pointerEvents: 'none' });
+        gsap.to('#scene2-ui', { opacity: 0, duration: 0.5, pointerEvents: 'none' });
+
+        this.finaleGroup.visible = false;
+        this.envelopeGroup.visible = false;
+        this.gardenGroup.visible = false;
+        this.roseGroup.visible = true;
+
+        // Reset Rose
+        this.rosePetalMeshes.forEach(p => {
+          p.rotation.x = p.userData.closedRotX;
+        });
+        this.roseCoreSprite.scale.set(3, 3, 3);
+        this.roseCoreSprite.material.opacity = 0.85;
+
+        // Reset camera
+        gsap.to(this.camera.position, {
+          x: 0, y: 1.5, z: 14, duration: 2.0, ease: "power2.inOut",
+          onComplete: () => {
+            gsap.to('#scene1-ui', { opacity: 1, y: 0, duration: 0.8, pointerEvents: 'auto' });
+            document.getElementById('bottom-hint').textContent = "Xoay chuột hoặc vuốt để ngắm nhìn không gian 3D";
+          }
+        });
+      }
+
+      /* UI Stepper helper */
+      updateStepper(stepNum, label) {
+        document.querySelectorAll('.step-dot').forEach((dot, idx) => {
+          if (idx + 1 === stepNum) dot.classList.add('active');
+          else dot.classList.remove('active');
+        });
+        document.getElementById('step-label').textContent = label;
+      }
+
+      /* ------------------------------------------------------------
+         INTERACTIVE RAYCASTING (Click on flowers & envelope)
+         ------------------------------------------------------------ */
+      onPointerDown(event) {
+        // Prevent clicking through UI interactive elements (buttons, modals, letter)
+        if (event.target.closest('#parchment-card') || 
+            event.target.closest('#quote-modal') || 
+            event.target.closest('.top-bar') || 
+            event.target.closest('button')) {
+          return;
+        }
+
+        this.mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouseVector.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        this.raycaster.setFromCamera(this.mouseVector, this.camera);
+
+        // Click fireworks in Scene 4
+        if (this.sceneIndex === 4) {
+          const worldPoint = new THREE.Vector3(this.mouseVector.x * 12, this.mouseVector.y * 8 + 3, -2);
+          this.launchFirework(worldPoint.x, worldPoint.y, worldPoint.z);
+          return;
+        }
+
+        // Click Envelope in Scene 3
+        if (this.sceneIndex === 3) {
+          const intersects = this.raycaster.intersectObjects(this.envelopeGroup.children, true);
+          if (intersects.length > 0) {
+            this.openEnvelopeAndCard();
+            return;
+          }
+        }
+
+        // Click Interactive Flowers in Scene 2
+        if (this.sceneIndex === 2) {
+          const hitFlowers = [];
+          this.interactiveFlowerObjects.forEach(flower => {
+            const hits = this.raycaster.intersectObjects(flower.children, true);
+            if (hits.length > 0) hitFlowers.push(flower);
+          });
+
+          if (hitFlowers.length > 0) {
+            const targetFlower = hitFlowers[0];
+            audio.playChime();
+            
+            // Flower bloom bounce animation
+            gsap.to(targetFlower.scale, {
+              x: targetFlower.userData.baseScale * 1.5,
+              y: targetFlower.userData.baseScale * 1.5,
+              z: targetFlower.userData.baseScale * 1.5,
+              duration: 0.4,
+              yoyo: true,
+              repeat: 1,
+              ease: "back.out(2)"
+            });
+
+            // Show Quote Modal
+            const modal = document.getElementById('quote-modal');
+            document.getElementById('quote-modal-text').textContent = targetFlower.userData.quote;
+            modal.classList.add('active');
+          }
+        }
+      }
+
+      /* ------------------------------------------------------------
+         EVENT LISTENERS & RESPONSIVENESS
+         ------------------------------------------------------------ */
+      setupEvents() {
+        let lastTrailTime = 0;
+        const onMouseMove = (e) => {
+          this.mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+          this.mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+          // Custom cursor position
+          const cursor = document.getElementById('custom-cursor');
+          if (cursor) {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+          }
+
+          // Stardust cursor trail
+          const now = performance.now();
+          if (now - lastTrailTime > 40) {
+            lastTrailTime = now;
+            const trail = document.createElement('div');
+            trail.className = 'cursor-trail';
+            trail.style.left = e.clientX + 'px';
+            trail.style.top = e.clientY + 'px';
+            trail.style.transform = `translate(-50%, -50%) scale(${0.7 + Math.random() * 0.6})`;
+            document.body.appendChild(trail);
+
+            gsap.to(trail, {
+              y: '-=' + (15 + Math.random() * 20),
+              x: '+=' + ((Math.random() - 0.5) * 20),
+              opacity: 0,
+              scale: 0.1,
+              duration: 0.75 + Math.random() * 0.35,
+              ease: "power1.out",
+              onComplete: () => trail.remove()
+            });
+          }
+        };
+
+        const onTouchMove = (e) => {
+          if (e.touches.length > 0) {
+            this.mouse.targetX = (e.touches[0].clientX / window.innerWidth - 0.5) * 2;
+            this.mouse.targetY = (e.touches[0].clientY / window.innerHeight - 0.5) * 2;
+          }
+        };
+
+        window.addEventListener('mousemove', onMouseMove, { passive: true });
+        window.addEventListener('touchmove', onTouchMove, { passive: true });
+        window.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        // UI Buttons
+        const quickLetterBtn = document.getElementById('btn-quick-letter');
+        if (quickLetterBtn) {
+          quickLetterBtn.addEventListener('click', () => {
+            if (!audio.isPlaying) {
+              audio.start();
+              document.getElementById('audio-bars').classList.add('active');
+            }
+            this.goToScene3();
+            setTimeout(() => {
+              this.openEnvelopeAndCard();
+            }, 1000);
+          });
+        }
+
+        // Tự động bật nhạc nhẹ nhàng ngay khi người dùng chạm hoặc click lần đầu
+        const startGentleMusicOnFirstTouch = () => {
+          if (!audio.isPlaying) {
+            audio.start();
+            const bars = document.getElementById('audio-bars');
+            if (bars) bars.classList.add('active');
+          }
+        };
+        window.addEventListener('pointerdown', startGentleMusicOnFirstTouch, { once: true });
+
+        document.getElementById('btn-open-gift').addEventListener('click', () => {
+          audio.start();
+          document.getElementById('audio-bars').classList.add('active');
+          this.goToScene2();
+        });
+
+        document.getElementById('btn-go-letter').addEventListener('click', () => {
+          this.goToScene3();
+        });
+
+        document.getElementById('btn-to-finale').addEventListener('click', () => {
+          this.goToScene4();
+        });
+
+        document.getElementById('btn-replay').addEventListener('click', () => {
+          this.replayExperience();
+        });
+
+        document.getElementById('btn-read-again').addEventListener('click', () => {
+          this.goToScene3();
+          this.openEnvelopeAndCard();
+        });
+
+        document.getElementById('btn-toggle-view').addEventListener('click', () => {
+          if (this.sceneIndex === 2) this.goToScene3();
+          else if (this.sceneIndex === 3) this.goToScene4();
+          else this.goToScene2();
+        });
+
+        // Audio Button
+        
+        // Audio Button
+        const audioBtn = document.getElementById('btn-audio');
+        const audioBars = document.getElementById('audio-bars');
+
+        audioBtn.addEventListener('click', async () => {
+          const isPlaying = await audio.toggle();
+
+          if (isPlaying) {
+            audioBars.classList.add('active');
+          } else {
+            audioBars.classList.remove('active');
+          }
+        });
+
+
+        // Close Quote Modal
+        document.getElementById('quote-close-btn').addEventListener('click', () => {
+          document.getElementById('quote-modal').classList.remove('active');
+        });
+
+        // Populate Letter Content
+        const paragraphsContainer = document.getElementById('letter-paragraphs');
+        paragraphsContainer.innerHTML = '';
+        CONFIG.letterContent.forEach(text => {
+          const p = document.createElement('p');
+          p.textContent = text;
+          paragraphsContainer.appendChild(p);
+        });
+      }
+
+      /* Finish Loader */
+      finishLoader() {
+        const bar = document.getElementById('loader-bar');
+        const status = document.getElementById('loader-status');
+        bar.style.width = '100%';
+        status.textContent = 'Món quà đã sẵn sàng dành cho bạn!';
+
+        setTimeout(() => {
+          const loader = document.getElementById('loader');
+          loader.style.opacity = '0';
+          setTimeout(() => {
+            loader.style.display = 'none';
+          }, 1200);
+        }, 800);
+      }
+
+      /* ------------------------------------------------------------
+         ANIMATION RENDER LOOP (60 FPS)
+         ------------------------------------------------------------ */
+      animate() {
+        requestAnimationFrame(() => this.animate());
+
+        const delta = this.clock.getDelta();
+        const time = this.clock.getElapsedTime();
+
+        // 1. Smooth Camera Parallax from mouse/touch
+        this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.05;
+        this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.05;
+
+        if (this.sceneIndex === 1) {
+          // Slow organic rotation around rose
+          this.roseGroup.rotation.y = time * 0.25 + this.mouse.x * 0.4;
+          this.roseGroup.rotation.x = Math.sin(time * 0.8) * 0.08 + this.mouse.y * 0.2;
+          this.pinkPointLight.intensity = 2.5 + Math.sin(time * 3.0) * 0.6;
+        }
+
+        if (this.sceneIndex === 2 && this.gardenGroup.visible) {
+          // Camera parallax in garden
+          this.camera.position.x += (this.mouse.x * 3.5 - this.camera.position.x) * 0.04;
+          this.camera.position.y += (3.0 + this.mouse.y * 1.5 - this.camera.position.y) * 0.04;
+          this.camera.lookAt(0, 2.0, 0);
+
+          // Gentle wind swaying flowers
+          this.gardenGroup.children.forEach(obj => {
+            if (obj.userData && obj.userData.windPhase !== undefined) {
+              const wind = Math.sin(time * obj.userData.windSpeed + obj.userData.windPhase) * 0.06;
+              obj.rotation.z = wind;
+            }
+          });
+
+          // Fluttering Butterflies
+          this.butterflies.forEach(b => {
+            const ud = b.userData;
+            const angle = time * ud.speed + ud.angleOffset;
+            b.position.x = Math.cos(angle) * ud.radiusX;
+            b.position.z = Math.sin(angle) * ud.radiusZ;
+            b.position.y = ud.heightBase + Math.sin(time * 3 + ud.angleOffset) * 0.8;
+            b.rotation.y = -angle + Math.PI / 2;
+
+            // Wing flap animation
+            const flap = Math.sin(time * ud.flapSpeed) * 0.75;
+            ud.leftPivot.rotation.y = flap;
+            ud.rightPivot.rotation.y = -flap;
+          });
+
+          // Background Heart Pulsing
+          if (this.gardenHeart) {
+            const beat = 1 + Math.sin(time * 2.5) * 0.05;
+            this.gardenHeart.scale.set(0.9 * beat, 0.9 * beat, 0.9 * beat);
+            this.gardenHeart.rotation.y = Math.sin(time * 0.5) * 0.2;
+          }
+        }
+
+        if (this.sceneIndex === 3 && this.envelopeGroup.visible) {
+          // Floating bobbing envelope with subtle mouse follow
+          this.envelopeGroup.position.y = 0.5 + Math.sin(time * 1.5) * 0.15;
+          this.envelopeGroup.rotation.y = this.mouse.x * 0.45;
+          this.envelopeGroup.rotation.x = this.mouse.y * 0.35;
+        }
+
+        if (this.sceneIndex === 4 && this.finaleGroup.visible) {
+          // Beating, slowly rotating Heart of Flowers
+          const heartbeat = 1.0 + Math.sin(time * 3.2) * 0.04;
+          this.finaleGroup.scale.set(heartbeat, heartbeat, heartbeat);
+          this.finaleGroup.rotation.y = time * 0.35 + this.mouse.x * 0.5;
+          this.finaleGroup.rotation.x = this.mouse.y * 0.25;
+
+          // Pulse center glow
+          this.finaleCenterGlow.scale.set(12 * heartbeat, 12 * heartbeat, 1);
+        }
+
+        // 2. Animate Ambient Falling Petals
+        if (this.floatingPetals) {
+          const data = this.floatingPetalData;
+          for (let i = 0; i < data.count; i++) {
+            data.pos[i * 3 + 1] -= data.spd[i * 3 + 1];
+            data.pos[i * 3] += Math.sin(time + i) * 0.015;
+
+            // Wrap around top if fallen below threshold
+            if (data.pos[i * 3 + 1] < -6) {
+              data.pos[i * 3 + 1] = 20;
+              data.pos[i * 3] = (Math.random() - 0.5) * 35;
+            }
+          }
+          this.floatingPetals.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // 3. Animate Fireflies
+        if (this.fireflies) {
+          const pos = this.firefliesPos;
+          const count = pos.length / 3;
+          for (let i = 0; i < count; i++) {
+            pos[i * 3 + 1] += Math.sin(time * 2 + i) * 0.012;
+            pos[i * 3] += Math.cos(time * 1.5 + i) * 0.012;
+          }
+          this.fireflies.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // 4. Update Fireworks
+        for (let i = this.fireworksArray.length - 1; i >= 0; i--) {
+          const fw = this.fireworksArray[i];
+          const ud = fw.userData;
+          ud.life -= ud.decay;
+
+          const p = ud.positions;
+          const v = ud.velocities;
+          const len = p.length / 3;
+
+          for (let j = 0; j < len; j++) {
+            p[j * 3] += v[j * 3];
+            p[j * 3 + 1] += v[j * 3 + 1];
+            p[j * 3 + 2] += v[j * 3 + 2];
+            v[j * 3 + 1] -= 0.002; // gravity
+          }
+          fw.geometry.attributes.position.needsUpdate = true;
+          fw.material.opacity = ud.life;
+
+          if (ud.life <= 0) {
+            this.scene.remove(fw);
+            fw.geometry.dispose();
+            fw.material.dispose();
+            this.fireworksArray.splice(i, 1);
+          }
+        }
+
+        // 5. Render Scene
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    // Launch Experience on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check for WebGL compatibility
+      try {
+        const testCanvas = document.createElement('canvas');
+        const hasWebGL = !!(window.WebGLRenderingContext && (testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl')));
+        if (!hasWebGL) throw new Error("WebGL not supported");
+        window.bloomingApp = new BloomingLoveExperience();
+      } catch (err) {
+        console.error(err);
+        document.getElementById('loader').innerHTML = `
+          <div style="text-align:center; padding:30px; font-family:sans-serif; color:#fff;">
+            <h2 style="color:#ff85a1; margin-bottom:15px;">Chào mừng ngày 20/10! 🌸</h2>
+            <p style="margin-bottom:20px; line-height:1.6;">Trình duyệt của bạn đang tắt WebGL hoặc chưa hỗ trợ tăng tốc 3D.<br>Hãy bật Hardware Acceleration trong cài đặt trình duyệt để có trải nghiệm trọn vẹn nhất nhé!</p>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
